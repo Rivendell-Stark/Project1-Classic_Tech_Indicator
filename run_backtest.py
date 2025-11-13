@@ -5,7 +5,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)  
 import os.path
 import sys
-
+from data.data_loader import load_stock_data
 import datetime
 import pandas as pd
 import numpy as np
@@ -21,7 +21,7 @@ class TestStrategy(bt.Strategy):
         ("adx_period", 14),
         ("adx_threshold", 25),
         ("stop_loss_pct", 0.05),
-        ("printlog", True),
+        ("printlog", False),
         )
     
     def __init__(self):
@@ -40,9 +40,11 @@ class TestStrategy(bt.Strategy):
     def next(self):
         self.log("Close, %.2f" % self.datas[0].close[0])
 
-        buy_sig = self.cross_up[0] and (self.adx[0] > self.p.adx_threshold)
-        sell_sig = self.cross_down[0] or (self.buyprice and (self.datas[0].close[0] < self.buyprice * (1 - self.p.stop_loss_pct))) 
+        # buy_sig = self.cross_up[0] and (self.adx[0] > self.p.adx_threshold)
+        # sell_sig = self.cross_down[0] or (self.buyprice and (self.datas[0].close[0] < self.buyprice * (1 - self.p.stop_loss_pct))) 
 
+        buy_sig = self.cross_up[0]
+        sell_sig = self.cross_down[0]
 
         if self.order:
             return
@@ -50,13 +52,13 @@ class TestStrategy(bt.Strategy):
         if not self.position:
             if buy_sig:
                 self.log("BUY CREATE, %.2f" % self.datas[0].close[0])
-                # self.order = self.order_target_percent(target=0.05)
-                self.order = self.buy()
+                self.order = self.order_target_percent(target=0.95)
+                # self.order = self.buy()
         else:
             if sell_sig:
                 self.log("SELL CREATE, %.2f" % self.datas[0].close[0])
-                # self.order = self.order_target_percent(target=0)
-                self.order = self.sell()
+                self.order = self.order_target_percent(target=0)
+                # self.order = self.sell()
 
     def log(self, txt, dt=None, doprint=False):
         if self.p.printlog or doprint:
@@ -110,25 +112,18 @@ if __name__ == "__main__":
     cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
     
-    data = os.path.join("/data/hs300-08-25.csv")
+    data_pool = ['300519']
+    start_date = datetime.datetime(2016,1,1)
+    end_date = datetime.datetime(2025,12,31)
 
-    data = btfeeds.BacktraderCSVData(
-        dataname = datapath,
-        fromdate = datetime.datetime(2008,1,1),
-        todate = datetime.datetime(2025,12,31),
-        dtformat=(r'%Y/%m/%d'),
-        datetime=0,
-        open=1,
-        high=2,
-        low=3,
-        close=4,
-        volume=5,
-        openinterest=-1
-        )
+    stock_data_dict = load_stock_data(data_pool, start_date, end_date)
+
+    for code, df in stock_data_dict.items():
+        data = btfeeds.PandasData(dataname=df, name=code)
+        cerebro.adddata(data)
     
-    cerebro.adddata(data)
     cerebro.broker.setcash(1000000.0)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
+    # cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     cerebro.broker.setcommission(commission=0.001)
     cerebro.broker.set_checksubmit(True)
     cerebro.broker.set_fundmode(False)
