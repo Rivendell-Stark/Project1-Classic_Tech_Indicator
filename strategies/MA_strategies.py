@@ -3,18 +3,14 @@
 
 '''
 from __future__ import (absolute_import, division, print_function, unicode_literals)  
-import os.path
-import sys
 
 import datetime
 import pandas as pd
 import numpy as np
 import backtrader as bt
 import backtrader.indicators as btind
-import backtrader.feeds as btfeeds
-import quantstats as qt
 
-class TestStrategy(bt.Strategy):
+class DMA_Strategy(bt.Strategy):
     params = (
         ("ma_short", 5),
         ("ma_long", 20),
@@ -98,72 +94,3 @@ class TestStrategy(bt.Strategy):
         
         self.log("OPERATION PROFIT, GROSS %.2f, NET %.2f" % 
                  (trade.pnl, trade.pnlcomm))
-
-
-if __name__ == "__main__":
-
-    cerebro = bt.Cerebro()
-    cerebro.addstrategy(TestStrategy)
-
-    cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
-    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe', timeframe=bt.TimeFrame.Days)
-    cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
-    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
-    
-    data = os.path.join("/data/hs300-08-25.csv")
-
-    data = btfeeds.BacktraderCSVData(
-        dataname = datapath,
-        fromdate = datetime.datetime(2008,1,1),
-        todate = datetime.datetime(2025,12,31),
-        dtformat=(r'%Y/%m/%d'),
-        datetime=0,
-        open=1,
-        high=2,
-        low=3,
-        close=4,
-        volume=5,
-        openinterest=-1
-        )
-    
-    cerebro.adddata(data)
-    cerebro.broker.setcash(1000000.0)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
-    cerebro.broker.setcommission(commission=0.001)
-    cerebro.broker.set_checksubmit(True)
-    cerebro.broker.set_fundmode(False)
-    cerebro.broker.set_filler(None)
-
-    print("Srarting Portfolio Value: %.2f" % cerebro.broker.getvalue())
-
-    results = cerebro.run()
-    
-    print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
-
-    strategy_results = results[0]
-
-    total_return = strategy_results.analyzers.returns.get_analysis()['rtot']
-    annual_return = strategy_results.analyzers.returns.get_analysis()['rnorm100']
-    sharpe_ratio = strategy_results.analyzers.sharpe.get_analysis()['sharperatio']
-    max_drawdown = strategy_results.analyzers.drawdown.get_analysis()['max']['drawdown']
-
-    trade_analysis = strategy_results.analyzers.trade_analyzer.get_analysis()
-    trade_data = trade_analysis.get("total", {})
-    total_trades = trade_data.get("closed", 0)
-    winning_trades = trade_analysis.get('won', {}).get('total', 0)
-    losing_trades = trade_analysis.get('lost', {}).get('total', 0)
-    win_rate = (winning_trades / total_trades) * 100 if total_trades else 0
-
-    print("================================== 策略性能分析 ==================================")
-    print(f"基准 (沪深300指数双均线策略)")
-    print(f"总交易次数: {total_trades}")
-    print(f"胜率 (Winning Rate): {win_rate:.2f}%")
-    print("----------------------------------- 收益指标 -----------------------------------")
-    print(f"累计收益率 (Total Return): {total_return * 100:.2f}%")
-    print(f"年化收益率 (Annualized Return): {annual_return:.2f}%")
-    print(f"夏普比率 (Sharpe Ratio): {sharpe_ratio:.4f}")
-    print("----------------------------------- 风险指标 -----------------------------------")
-    print(f"最大回撤 (Max Drawdown): {max_drawdown:.2f}%")
-    print("================================================================================")
-
-    cerebro.plot()
