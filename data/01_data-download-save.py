@@ -119,7 +119,9 @@ if __name__ == "__main__"   :
 
     # data = data_process(raw, fq)
     # data.to_parquet(r"D:\Projects\Quant\1_CSMAR-Data\A股-回报率\data_clean.parquet")    
-    data = pd.read_parquet(r"D:\Projects\Quant\1_CSMAR-Data\A股-回报率\data_clean.parquet")
+    # data = pd.read_parquet(r"D:\Projects\Quant\1_CSMAR-Data\A股-回报率\data_clean.parquet")
+
+
 
     # 存入数据库
     db_url = f"postgresql+psycopg2://maxkirby:123456@localhost:5432/stock_db"

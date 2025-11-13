@@ -5,7 +5,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-def read_db(stock_list, start_date, end_date, table_name='daily_price', db_url="postgresql+psycopg2://maxkirby:123456@localhost:5432/stock_db"):
+def read_db(stock_code, start_date, end_date, table_name='daily_price', db_url="postgresql+psycopg2://maxkirby:123456@localhost:5432/stock_db"):
     
     
     pass
