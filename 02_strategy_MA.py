@@ -12,43 +12,56 @@ import numpy as np
 import backtrader as bt
 import backtrader.indicators as btind
 import backtrader.feeds as btfeeds
+import quantstats as qt
 
 class TestStrategy(bt.Strategy):
     params = (
         ("ma_short", 5),
         ("ma_long", 20),
-        ("filter", 0.005),
+        ("adx_period", 14),
+        ("adx_threshold", 25),
+        ("stop_loss_pct", 0.05),
         ("printlog", True),
-    )
-
-    def log(self, txt, dt=None, doprint=False):
-        if self.params.printlog or doprint:
-            dt = dt or self.datas[0].datetime.date(0)
-            print("%s, %s" % (dt.isoformat(), txt))
+        )
     
     def __init__(self):
-        self.dataclose = self.datas[0].close
+        self.sma_s = btind.MovingAverageSimple(self.datas[0].close, period=self.p.ma_short)
+        self.sma_l = btind.MovingAverageSimple(self.datas[0].close, period=self.p.ma_long)
+        
+        self.adx = btind.AverageDirectionalMovementIndex(self.data, period=self.p.adx_period)
 
-        self.order = None
+        self.cross_up = btind.CrossUp(self.sma_s, self.sma_l)
+        self.cross_down = btind.CrossDown(self.sma_s, self.sma_l)
+
         self.buyprice = None
         self.buycomm = None
+        self.order = None
 
-        self.sma_short = btind.MovingAverageSimple(self.datas[0], period=self.params.ma_short)
-        self.sma_long = btind.MovingAverageSimple(self.datas[0], period=self.params.ma_long)
+    def next(self):
+        self.log("Close, %.2f" % self.datas[0].close[0])
 
-        self.golden_cross = btind.CrossOver(self.sma_short, self.sma_long)
-        self.death_cross = btind.CrossOver(self.sma_long, self.sma_short)
+        buy_sig = self.cross_up[0] and (self.adx[0] > self.p.adx_threshold)
+        sell_sig = self.cross_down[0] or (self.buyprice and (self.datas[0].close[0] < self.buyprice * (1 - self.p.stop_loss_pct))) 
 
 
+        if self.order:
+            return
 
-        btind.ExponentialMovingAverage(self.datas[0], period=25)
-        btind.WeightedMovingAverage(self.datas[0], period=25, subplot=True)
-        btind.StochasticSlow(self.datas[0])
-        btind.MACDHisto(self.datas[0])
-        rsi = btind.RSI(self.datas[0])
-        btind.SmoothedMovingAverage(rsi, period=10)
-        btind.ATR(self.datas[0], plot=False)
+        if not self.position:
+            if buy_sig:
+                self.log("BUY CREATE, %.2f" % self.datas[0].close[0])
+                # self.order = self.order_target_percent(target=0.05)
+                self.order = self.buy()
+        else:
+            if sell_sig:
+                self.log("SELL CREATE, %.2f" % self.datas[0].close[0])
+                # self.order = self.order_target_percent(target=0)
+                self.order = self.sell()
 
+    def log(self, txt, dt=None, doprint=False):
+        if self.p.printlog or doprint:
+            dt = dt or self.datas[0].datetime.date(0)
+            print("%s, %s" % (dt.isoformat(), txt))
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -69,6 +82,8 @@ class TestStrategy(bt.Strategy):
                         (order.executed.price,
                          order.executed.value,
                          order.executed.comm))
+                
+                self.buyprice = None
             
             self.bar_executed = len(self)
         
@@ -84,39 +99,23 @@ class TestStrategy(bt.Strategy):
         self.log("OPERATION PROFIT, GROSS %.2f, NET %.2f" % 
                  (trade.pnl, trade.pnlcomm))
 
-    def next(self):
-        self.log("Close, %.2f" % self.dataclose[0])
 
-        if self.order:
-            return
-
-        if not self.position:
-            if (self.golden_cross[0] == 1) and ((self.sma_short[0]-self.sma_long[0])/self.sma_long[0] >= self.params.filter) and (self.datas[0].close[0] > self.sma_long[0]):
-            # if self.golden_cross[0] == 1:
-                self.log("BUY CREATE, %.2f" % self.dataclose[0])
-                self.order = self.buy()
-        else:
-            if (self.death_cross[0] == 1) and ((self.sma_long[0]-self.sma_short[0])/self.sma_long[0] >= self.params.filter) and (self.datas[0].close[0] < self.sma_long[0]):
-            # if self.death_cross[0] == 1:
-                self.log("SELL CREATE, %.2f" % self.dataclose[0])
-                self.order = self.sell()
-    
 if __name__ == "__main__":
 
     cerebro = bt.Cerebro()
     cerebro.addstrategy(TestStrategy)
 
     cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
-    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
-    cerebro.addanalyzer(bt.analyzers.DrawDown, _name="dd")
+    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe', timeframe=bt.TimeFrame.Days)
+    cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
     
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, "./data/hs300-22-25.csv")
+    datapath = os.path.join(modpath, "./data/hs300-08-25.csv")
 
     data = btfeeds.GenericCSVData(
         dataname = datapath,
-        fromdate = datetime.datetime(2022,1,1),
+        fromdate = datetime.datetime(2008,1,1),
         todate = datetime.datetime(2025,12,31),
         dtformat=(r'%Y/%m/%d'),
         datetime=0,
@@ -131,61 +130,41 @@ if __name__ == "__main__":
     cerebro.adddata(data)
     cerebro.broker.setcash(1000000.0)
     cerebro.addsizer(bt.sizers.FixedSize, stake=1)
-    cerebro.broker.setcommission(commission=0.001, margin=1.0, mult=1.0)
+    cerebro.broker.setcommission(commission=0.001)
+    cerebro.broker.set_checksubmit(True)
+    cerebro.broker.set_fundmode(False)
+    cerebro.broker.set_filler(None)
 
     print("Srarting Portfolio Value: %.2f" % cerebro.broker.getvalue())
 
     results = cerebro.run()
-    strat = results[0]
     
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-    core_metrics = {
-        '策略名称': '5-20双均线择时',
-        '标的': '沪深300',
-        '回测时间': '2022-01-01 ~ 2025-11-10',
-        '初始资金': 1000000,
-        '最终净值': round(cerebro.broker.getvalue(), 2),
-        '总收益率(%)': round(strat.analyzers.returns.get_analysis()['rtot'] * 100, 2),
-        '年化收益率': round(strat.analyzers.returns.get_analysis()['rnorm100'], 2),
-        '夏普比率': round(strat.analyzers.sharpe.get_analysis()['sharperatio'], 2),
-        '最大回撤(%)': round(strat.analyzers.dd.get_analysis()['max']['drawdown'], 2),
-        '总交易次数': strat.analyzers.trade_analyzer.get_analysis()['total']['total'],
-        # '胜率(%)': round(strat.analyzers.trade_analyzer.get_analysis()['won']['total'] / strat.analyzers.trade_analyzer.get_analysis()['total']['total'] * 100, 2) if strat.analyzers.trade_analyzer.get_analysis()['total']['total'] > 0 else 0,
-        # '盈亏比': round(strat.analyzers.trade_analyzer.get_analysis()['gross']['profit'] / abs(strat.analyzers.trade_analyzer.get_analysis()['gross']['loss']), 2) if strat.analyzers.trade_analyzer.get_analysis()['gross']['loss'] != 0 else 0
-    }
-    core_metrics_df = pd.DataFrame(core_metrics, index=core_metrics.keys())
+    strategy_results = results[0]
 
-    # trade_list = []
-    # for trade in strat._trades:
-    #     trade_dict  = {
-    #         # '交易ID': trade.ref,
-    #         '开仓时间': trade.open_datetime().strftime('%Y-%m-%d'),
-    #         '开仓价格': round(trade.price, 2),
-    #         '平仓时间': trade.close_datetime().strftime('%Y-%m-%d') if trade.closed else '未平仓',
-    #         '平仓价格': round(trade.close_price, 2) if trade.closed else None,
-    #         '持仓天数': (trade.close_datetime() - trade.open_datetime()).days if trade.closed else None,
-    #         '盈亏金额': round(trade.pnl, 2),
-    #         '手续费': round(trade.commission, 2),
-    #         '净盈亏': round(trade.pnl - trade.commission, 2)
-    #     }
-    #     trade_list.append(trade_dict)
-    # trade_df = pd.DataFrame(trade_list)
+    total_return = strategy_results.analyzers.returns.get_analysis()['rtot']
+    annual_return = strategy_results.analyzers.returns.get_analysis()['rnorm100']
+    sharpe_ratio = strategy_results.analyzers.sharpe.get_analysis()['sharperatio']
+    max_drawdown = strategy_results.analyzers.drawdown.get_analysis()['max']['drawdown']
 
-    # net_value_list = []
-    # for i, data in enumerate(strat.data):
-    #     net_value_dict = {
-    #         '日期': data.datetime.date().strftime('%Y-%m-%d'),
-    #         '账户净值': round(cerebro.broker.getvalue(), 2),
-    #         '累计收益率(%)': round((cerebro.broker.getvalue() - 100000)/100000 * 100, 2),
-    #         '标的收盘价': round(data.close[0], 2)
-    #     }
-    #     net_value_list.append(net_value_dict)
-    # net_value_df = pd.DataFrame(net_value_list)
+    trade_analysis = strategy_results.analyzers.trade_analyzer.get_analysis()
+    trade_data = trade_analysis.get("total", {})
+    total_trades = trade_data.get("closed", 0)
+    winning_trades = trade_analysis.get('won', {}).get('total', 0)
+    losing_trades = trade_analysis.get('lost', {}).get('total', 0)
+    win_rate = (winning_trades / total_trades) * 100 if total_trades else 0
 
-    with pd.ExcelWriter('双均线策略_回测结果.xlsx', engine='openpyxl') as writer:
-        core_metrics_df.to_excel(writer, sheet_name='核心指标', index=False)
-        # trade_df.to_excel(writer, sheet_name='交易明细', index=False)
-        # net_value_df.to_excel(writer, sheet_name='净值曲线', index=False)
+    print("================================== 策略性能分析 ==================================")
+    print(f"基准 (沪深300指数双均线策略)")
+    print(f"总交易次数: {total_trades}")
+    print(f"胜率 (Winning Rate): {win_rate:.2f}%")
+    print("----------------------------------- 收益指标 -----------------------------------")
+    print(f"累计收益率 (Total Return): {total_return * 100:.2f}%")
+    print(f"年化收益率 (Annualized Return): {annual_return:.2f}%")
+    print(f"夏普比率 (Sharpe Ratio): {sharpe_ratio:.4f}")
+    print("----------------------------------- 风险指标 -----------------------------------")
+    print(f"最大回撤 (Max Drawdown): {max_drawdown:.2f}%")
+    print("================================================================================")
 
-    # cerebro.plot()
+    cerebro.plot()
