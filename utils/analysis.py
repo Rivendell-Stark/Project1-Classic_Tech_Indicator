@@ -26,23 +26,6 @@ ANALYZER_MAP = {
     'PositionsValue': btanal.PositionsValue
 }
 
-METRIC_EXTRACTION_MAP = {
-    'Returns': [('rtor', ['rtot']),
-                ('rnorm', ['rnorm'])],
-    'DrawDown': [('max_drawdown', ['max','drawdown']),
-                 ('max_len', ['max','len'])],
-    'SharpeRatio': [("sharpe_ratio", ["sharperatio"])],
-    'TradeAnalyzer': [],
-    'PyFolio': [],
-    'TimeDrawDown': [],
-    'AnnualReturn': [('annual_return_dict', ['annual'])],
-    'VWR': [('vwr', ['vmr'])], 
-    'SQN':[('sqn', ['sqn'])],
-    'Calmar': [('calmar_ratio', ['calmarratio'])],
-    'GrossLeverage': [],
-    'PositionsValue': [('final_positions_value', ['total'])]
-}
-
 def configure_analyzers(cerebro: bt.cerebro, analyzers_list: list=["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer', 'PyFolio']) -> None:
 
     for name, AnalyzerClass in ANALYZER_MAP.items():
@@ -51,72 +34,58 @@ def configure_analyzers(cerebro: bt.cerebro, analyzers_list: list=["Returns", "D
     return 
 
 def generate_analysis(strat, analyzers_list, logger):
-    """
-    动态提取指定分析器中的关键指标，并返回收益率序列。
-    
-    Args:
-        strat (Strategy): 回测运行后的策略实例结果 (results[0])
-        analyzers_list (list): 运行 configure_analyzers 时使用的列表。
-        logger (Logger): 日志记录器。
-
-    Returns:
-        tuple: (metrics_dict, returns_series)
-    """
-
     metrics = {}
 
-    for analyzer_name in analyzers_list:
-        if (analyzer_name in strat.analyzers) and (analyzer_name in METRIC_EXTRACTION_MAP):
-            analyzer_instance = strat.analyzers.getbyname(analyzer_name.lower())            
-            analysis_dict = analyzer_instance.get_analysis()
-            
-            for metric_key, dict_path in METRIC_EXTRACTION_MAP[analyzer_name]:
-                current_value = analysis_dict
-                extrated_value = 'N/A'
-                
-                try:
-                    for key in dict_path:
-                        current_value = current_value[key]
-                    extrated_value = current_value
-                except (KeyError, IndexError, TypeError) as e:
-                    logger.error(f":指标 {metric_key} 不存在或提取错误：{e}")
-                    extrated_value = 'N/A'
-
-                metrics[metric_key] = extrated_value
-    
-    if ("TradeAnalyzer" in analyzers_list) and (metrics.get('total_trades') not in [0, 'N/A']):
-        total_trades = metrics['total_trades']
-        won_trades = metrics.get('won_trades', 0)
-        winrate = won_trades / total_trades
-    else:
-        metrics['winrate'] = 'N/A'
-
     if "Returns" in analyzers_list:
-        rtot = metrics.get("rtot", 'N/A')
-        rnorm = metrics.get('rnorm', 'N/A')
-        logger.info(f"总回报率 (rtot): {rtot}")
-        logger.info(f"年化回报率 (rnorm): {rnorm}")
+        try:
+            returns_ana = strat.analyzers.returns.get_analysis()
+            metrics["rtot"] = returns_ana['rtot']
+            metrics['rnorm'] = returns_ana['rnorm']
+            logger.info(f"总回报率 (rtot): {metrics["rtot"]}")
+            logger.info(f"年化回报率 (rnorm): {metrics['rnorm']}")
+        except Exception as e:
+            logger.error(f"Returns 分析器提取失败: {e}")
+            metrics['rtot'] = "N/A"
+            metrics['rnorm'] = 'N/A'
 
     if "DrawDown" in analyzers_list:
-        max_drawdown = metrics.get('max_drawdown', 'N/A')
-        max_len = metrics.get('max_len', 'N/A')
-        logger.info(f"最大回撤 (max drawdown): {max_drawdown}%, 回撤长度：{max_len}")
+        try:
+            drawdown_ana = strat.analyzers.drawdown.get_analysis()
+            metrics['max_dd'] = abs(drawdown_ana['max']['drawdown'])
+            metrics['max_len'] = drawdown_ana['max']['len']
+            logger.info(f"最大回撤 (max drawdown): {metrics['max_dd']}, 回撤长度：{metrics['max_len']}")
+        except Exception as e:
+            logger.error(f"DrawDown 分析器提取失败: {e}")
+            metrics['max_dd'] = "N/A"
+            metrics['max_len'] = "N/A"
+            
     
     if "SharpeRatio" in analyzers_list:
-        sharpe_ratio = metrics.get('sharpe_ratio', 'N/A')
-        logger.info(f"夏普比率 (Sharpe): {sharpe_ratio}")
-
+        try:
+            sharpe_ana = strat.analyzers.sharperatio.get_analysis()
+            metrics['sharpe'] = sharpe_ana['sharperatio']
+            logger.info(f"夏普比率 (Sharpe): {metrics['sharpe']: .2%}")
+        except Exception as e:
+            logger.error(f"SharpeRatio 分析器提取失败: {e}")
+            metrics['sharpe'] = "N/A" 
+    
     if "TradeAnalyzer" in analyzers_list:
-        trades_total = metrics.get('total_trades', 'N/A')
-        winrate = metrics.get('winrate', 'N/A')
-        logger.info(f"总交易数: {trades_total}")
-        logger.info(f"胜率: {winrate}")
+        try:
+            ta_ana = strat.analyzers.tradeanalyzer.get_analysis()
+            metrics['total'] = ta_ana.get('total', {}).get('closed', 0)
+            won_trades = ta_ana.get('won', {}).get('total', 0)
+            metrics['winrate'] = won_trades / metrics['total'] if metrics['total'] > 0 else 'N/A'
+        except Exception as e:
+            logger.error(f"TradeAnalyzer 分析器提取失败: {e}")
+            metrics['total'] = "N/A"
+            metrics['winrate'] = "N/A"
 
-    try:
-        ret_series, pos_series, transactions, gross_lev = strat.analyzers.pyfolio.get_pf_items()
-    except Exception as e:
-        logger.error(f"PyFolio 收益率序列提取失败， 无法生成报告：{e}")
-        return metrics, None
+    if "PyFolio" in analyzers_list:
+        try:
+            ret_series, pos_series, transactions, gross_lev = strat.analyzers.pyfolio.get_pf_items()
+        except Exception as e:
+            logger.error(f"PyFolio 收益率序列提取失败， 无法生成报告：{e}")
+            return metrics, None
 
     return (metrics, ret_series)
 

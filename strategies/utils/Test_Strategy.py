@@ -1,6 +1,6 @@
 import backtrader as bt
 
-class DummyStrategy(bt.Strategy):
+class TestStrategy(bt.Strategy):
     """一个简单的占位策略，用于验证数据加载和Cerebro运行。"""
     
     # 打印出每个数据源的名称和最新价格

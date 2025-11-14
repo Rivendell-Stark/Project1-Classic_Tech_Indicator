@@ -30,26 +30,20 @@ def setup_output_run(
     os.makedirs(output_dir, exist_ok=True)
 
     # 配置诊断日志
-    log_path = os.path.join(output_dir, 'run_log.log')
+    log_path = os.path.join(output_dir, 'diagnostic_log.log')
 
     logger = logging.getLogger('BacktestLogger')
     logger.setLevel(logging.INFO)
     if logger.handlers:
         logger.handlers.clear()
     
-    file_handler = logging.FileHandler(log_path)
+    file_handler = logging.FileHandler(log_path, encoding='utf-8')
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(levelname)s | %(asctime)s | %(message)s')
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
     return output_dir, logger
-
-def report_run_summary(logger, metrics):
-    """
-    接收 logger 和关键指标字典，将最终的夏普比率、最大回撤等信息打印到日志和控制台。
-    """
-    pass
 
 # --- 系统与数据状态检查类 ---
 def check_prerequisites():
@@ -75,24 +69,4 @@ def convert_date_to_str(date_obj: Any, format: str = "%Y-%m-%d") -> str:
     if isinstance(date_obj, str):
         return date_obj 
     return date_obj.strftime(format)
-
-# --- Backtrader 结果解析类 ---
-def extract_returns_series(results):
-    """
-    从 Backtrader 的 Returns 分析器中提取日收益率序列
-    """
-    returns_analyzer = results[0].analyzers.returns.get_analysis()
-
-    if 'rtn' in returns_analyzer:
-        returns_series = returns_analyzer['rtn']
-        returns_series.index = pd.to_datetime(returns_series.index)
-        return returns_series
-    
-    raise KeyError("无法在 Backtrader Returns 分析器中找到 'rtn' 键。请检查分析器配置。")
-
-def extract_analyzer_metrics(results):
-    """
-    从多个分析器（Sharpe Ratio, Max Drawdown, Total Trades）中提取数值，返回一个易于打印的字典或 Pandas Series
-    """
-    pass
 

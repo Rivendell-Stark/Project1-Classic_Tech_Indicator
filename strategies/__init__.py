@@ -1,4 +1,2 @@
-from .Dummy_strategy import DummyStrategy
-
-
-__all__ = ['DummyStrategy']
+from .utils import TestStrategy, BaseStrategy
+from .DMA_strategy import DMAStrategy
