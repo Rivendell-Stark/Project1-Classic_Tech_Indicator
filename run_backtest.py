@@ -1,7 +1,7 @@
 '''
-策略: 沪深300双均线择时, 短sma5-长sma20, 过滤条件: 超过 5% 长均线 + 收盘价低于长均线
-
+回测框架主文件
 '''
+
 from __future__ import (absolute_import, division, print_function, unicode_literals)  
 
 import os
@@ -21,11 +21,11 @@ import backtrader.indicators as btind
 
 from data import load_stock_data
 from strategies import DummyStrategy
-from utils import setup_output_run
+from utils import *
 
 # --- 1. 配置 ---
 STRATEGY_NAME = 'DummyStrategy'
-DATA_POOL = ['000001','300059','600519']
+DATA_POOL = ['600519','601318','000333','300751']
 START_DATE = datetime.datetime(2016,1,1).strftime(r'%Y-%m-%d')
 END_DATE = datetime.datetime(2025,12,31).strftime(r'%Y-%m-%d')
 
@@ -60,19 +60,12 @@ def run_backtest():
     cerebro.addstrategy(DummyStrategy)
 
     # --- C.4 配置分析器 ---
-    cerebro.addanalyzer(btanal.Returns, _name='returns')
-    cerebro.addanalyzer(btanal.TimeDrawDown, _name='drawdown')
-    cerebro.addanalyzer(btanal.SharpeRatio, _name='sharpe')
-    cerebro.addanalyzer(btanal.TradeAnalyzer, _name='trades')
-    cerebro.addanalyzer(btanal.PyFolio, _name='pyfolio')
+    analyzers_list = ["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer', 'PyFolio']
+    configure_analyzers(cerebro=cerebro, analyzers_list=analyzers_list)
 
     # --- C.5 配置交易记录 ---
     trades_path = os.path.join(output_dir, 'trades_records.csv')
-    cerebro.addwriter(
-        bt.WriterFile,
-        csv=True,
-        out=trades_path
-    )
+    cerebro.addwriter(bt.WriterFile, csv=True, out=trades_path)
 
     # --- D. 运行回测 ---
     print("Srarting Portfolio Value: %.2f" % cerebro.broker.getvalue())
@@ -83,43 +76,21 @@ def run_backtest():
     if not results:
         logger.error("回测失败，无结果")
         return
-
     strat = results[0]
+    metrics, ret_series = generate_analysis(strat, analyzers_list, logger)
+    generate_quantstats_report(ret_series, output_dir, STRATEGY_NAME, logger)
 
-    analysis_returns = strat.analyzers.getbyname("returns").get_analysis()
-    analysis_drawdown = strat.analyzers.getbyname("drawdown").get_analysis()
-    analysis_sharpe = strat.analyzers.getbyname("sharpe").get_analysis()
-    analysis_trades = strat.analyzers.getbyname("trades").get_analysis()
-    analysis_pyfolio = strat.analyzers.getbyname('pyfolio').get_pf_items()
-    
-    rtot = analysis_returns['rtot']
-    rnorm = analysis_returns['rnorm']
-    max_drawdown = analysis_drawdown['max']['drawdown'] if analysis_drawdown.get('max') else 0
-    max_len = analysis_drawdown['max']['len'] if analysis_drawdown.get('max') else 0
-    sharpe_ratio = analysis_sharpe['sharperatio']
-    trades_total = analysis_trades['total']['total']
-    winrate = analysis_trades['won']['total'] / trades_total if trades_total != 0 else 0
-    returns, positions, transactions, gross_lev = analysis_pyfolio
-    
-    report_path = os.path.join(output_dir, "quantstats_report.html")
-    qt.reports.html(
-        returns=returns,
-        output=report_path,
-        title=STRATEGY_NAME,
-        download_btn=True
-    )
-    logger.info(f"QuantStats HTML 报告已成功保存到: {report_path}")
+    # --- F. 控制台输出指标 ---
+    print(f"总回报率 (rtot): {metrics.get('rtot', 'N/A'):.2%}")
+    print(f"年化回报率 (rnorm): {metrics.get('rnorm', 'N/A'):.2%}")
+    print(f"最大回撤 (MaxDD): {metrics.get('max_drawdown', 'N/A'):.2f}%")
+    print(f"夏普比率 (Sharpe): {metrics.get('sharpe_ratio', 'N/A'):.2f}")
+    print(f"总交易数: {metrics.get('total_trades', 'N/A')}")
+    print(f"胜率: {metrics.get('winrate', 'N/A'):.2%}")
+    print("--------------------------------------")
 
-    logger.info(f"总回报率 (rtot): {rtot}")
-    logger.info(f"年化回报率 (rnorm): {rnorm}")
-    logger.info(f"最大回撤 (max drawdown): {max_drawdown}%, 回撤长度：{max_len}")
-    logger.info(f"夏普比率 (Sharpe): {sharpe_ratio}")
-    logger.info(f"总交易数: {trades_total}")
-    logger.info(f"胜率: {winrate}")
     logging.shutdown()
-    
     cerebro.plot()
-
 
 
 if __name__ == "__main__":
