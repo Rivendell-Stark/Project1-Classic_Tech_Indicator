@@ -11,6 +11,7 @@ import backtrader as bt
 import backtrader.indicators as btind
 
 class BaseStrategy(bt.Strategy):
+    """记录日志功能"""
     params = (
         ('log_dir', None),
         ('sys_logger', None),

@@ -86,6 +86,8 @@ def generate_analysis(strat, analyzers_list, logger):
         except Exception as e:
             logger.error(f"PyFolio 收益率序列提取失败， 无法生成报告：{e}")
             return metrics, None
+    else:
+        ret_series = None
 
     return (metrics, ret_series)
 

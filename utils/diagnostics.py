@@ -15,10 +15,9 @@ def setup_output_run(
         end_date: str
         ) -> Tuple[str, logging.Logger]:
     """
-    1. 创建本次回测的唯一输出目录。
-    2. 配置并返回一个专用的日志对象。
-
-    返回：(输出目录路径, Logger对象)
+    Input: 策略名字、回测开始时间、回测结束时间
+    
+    Output: 日志目录(output_dir)、日志记录器对象(logger)
     """
 
     # 构造并创建日志目录

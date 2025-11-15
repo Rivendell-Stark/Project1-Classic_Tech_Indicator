@@ -1,2 +1,2 @@
-from .Base_Strategy import BaseStrategy
-from .Test_Strategy import TestStrategy
+from .Base_Strategy import *
+from .Test_Strategy import *

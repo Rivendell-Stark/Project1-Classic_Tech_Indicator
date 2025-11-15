@@ -27,7 +27,8 @@ class DMAStrategy(BaseStrategy):
         ("fast", 20),
         ("slow", 60),
         ("loss_stop", 0.05),
-        ('target_pos', 0.95)
+        ('target_pos', 0.95),
+        ('is_opt', False),
         )
     
     # --- B.1 策略初始化 ---
@@ -35,6 +36,8 @@ class DMAStrategy(BaseStrategy):
         super().__init__()
         self.dataclose = self.datas[0].close
         self.dataopen = self.datas[0].open
+
+        print(f"正在回测参数组合: fast={self.p.fast}, slow={self.p.slow}")
 
         self.fast_ma = btind.MovingAverageSimple(self.datas[0].close, period=self.p.fast, plot=True)
         self.slow_ma = btind.MovingAverageSimple(self.datas[0].close, period=self.p.slow, plot=True)
@@ -52,11 +55,15 @@ class DMAStrategy(BaseStrategy):
 
         if not self.position:
             if buy_sig:
-                self.log("买入信号产生: 金叉")
+                if not self.p.is_opt:
+                    self.log("买入信号产生: 金叉")
                 self.order = self.order_target_percent(target=self.p.target_pos)
         else:
             if sell_sig:
-                self.log("卖出信号产生: 死叉")
+                if not self.p.is_opt:
+                    self.log("卖出信号产生: 死叉")
                 self.order = self.close()
             elif risk_sig:
-                self.log(f"止损信号产生: 损失超过{self.p.loss_stop: .2%}")
+                if not self.p.is_opt:
+                    self.log(f"止损信号产生: 损失超过{self.p.loss_stop: .2%}")
+                self.order = self.close()
