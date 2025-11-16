@@ -2,7 +2,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import backtrader as bt
 import backtrader.indicator as btind
-from .Base_Strategy import BaseStrategy
+from ._Base_Strategy import Strategy_withlog
 
 class TestStrategy(bt.Strategy):
     """一个简单的占位策略，用于验证数据加载和Cerebro运行。"""
@@ -14,10 +14,10 @@ class TestStrategy(bt.Strategy):
             if data.datetime[0] > 0:
                 print(f'{dt} | {data._name} - Close: {data.close[0]:.2f}')
 
-class BuyonceStrategy(BaseStrategy):
+class BuyonceStrategy(Strategy_withlog):
     """
     最简单的买入并持有策略，用作基准 (Benchmark)。
-    它在第一根K线买入，一直持有到最后。
+    它在第一根K线买入, 一直持有到最后一天卖出。
     """
     params = (
         ('target_pos', 0.95), 

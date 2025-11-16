@@ -1,5 +1,5 @@
 """
-用于从数据库中查询需要的股票数据, 返回df_list为数据源
+用于从数据库中查询需要的股票数据, 返回data_dict为Backtrader数据源
 
 """
 import pandas as pd

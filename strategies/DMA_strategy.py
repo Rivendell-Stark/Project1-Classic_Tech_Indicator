@@ -2,30 +2,19 @@
 策略: 单股票双均线择时策略
 
 开仓信号: 金叉 + 无持仓
-
 平仓信号: 死叉 + 有持仓
+止损信号: 损失超过买入价的 loss_stop
 
-止损信号: 无
 '''
-from __future__ import (absolute_import, division, print_function, unicode_literals)  
-
-import os
-import logging
-from typing import TextIO
-
-import datetime
-import pandas as pd
-import numpy as np
-import backtrader as bt
 import backtrader.indicators as btind
 
-from .utils import BaseStrategy
+from ._Base_Strategy import Strategy_withlog
 
-class DMAStrategy(BaseStrategy):
+class DMAStrategy(Strategy_withlog):
     # --- A. 策略参数设置 ---
     params = (
-        ("fast", 20),
-        ("slow", 60),
+        ("fast", 15),
+        ("slow", 50),
         ("loss_stop", 0.05),
         ('target_pos', 0.95),
         ('is_opt', False),
@@ -37,15 +26,13 @@ class DMAStrategy(BaseStrategy):
         self.dataclose = self.datas[0].close
         self.dataopen = self.datas[0].open
 
-        print(f"正在回测参数组合: fast={self.p.fast}, slow={self.p.slow}")
-
         self.fast_ma = btind.MovingAverageSimple(self.datas[0].close, period=self.p.fast, plot=True)
         self.slow_ma = btind.MovingAverageSimple(self.datas[0].close, period=self.p.slow, plot=True)
         self.cross_over = btind.CrossOver(self.fast_ma, self.slow_ma)
 
+
     # --- B.2 策略周期执行 ---
     def next(self):
-        
         buy_sig = self.cross_over[0] > 0
         sell_sig = self.cross_over[0] < 0
         risk_sig = self.datas[0].low[0] <= (self.buyprice * (1.0 - self.p.loss_stop))
@@ -55,15 +42,12 @@ class DMAStrategy(BaseStrategy):
 
         if not self.position:
             if buy_sig:
-                if not self.p.is_opt:
-                    self.log("买入信号产生: 金叉")
+                self.log(f"买入信号产生: 快线价格 {self.fast_ma[0]: .2f}, 慢线价格 {self.slow_ma[0]: .2f}")
                 self.order = self.order_target_percent(target=self.p.target_pos)
         else:
             if sell_sig:
-                if not self.p.is_opt:
-                    self.log("卖出信号产生: 死叉")
+                self.log(f"卖出信号产生: 快线价格 {self.fast_ma[0]: .2f}, 慢线价格 {self.slow_ma[0]: .2f}")
                 self.order = self.close()
             elif risk_sig:
-                if not self.p.is_opt:
-                    self.log(f"止损信号产生: 损失超过{self.p.loss_stop: .2%}")
+                self.log(f"止损信号产生: 已损失{1-(self.datas[0].low[0]/self.buyprice): .2%}")
                 self.order = self.close()
