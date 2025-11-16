@@ -66,6 +66,7 @@ def setup_logger(
 
     # 建立logger对象，并配置handler
     bt_logger = logging.getLogger('BacktestLogger')
+    bt_logger.setLevel(logging.INFO)
     if bt_logger.handlers:
         bt_logger.handlers.clear()
     
@@ -93,6 +94,7 @@ def setup_logger_opt(
 
     # 建立logger对象，并配置handler
     opt_logger = logging.getLogger('OptimizationLogger')
+    opt_logger.setLevel(logging.INFO)
     if opt_logger.handlers:
         opt_logger.handlers.clear()
     

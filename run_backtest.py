@@ -177,7 +177,7 @@ if __name__ == "__main__":
     }
     bt_analyzers = ["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer', 'PyFolio']
 
-    # run_backtest(DMAStrategy, strategy_params, broker_params, bt_analyzers)
+    run_backtest(DMAStrategy, strategy_params, broker_params, bt_analyzers)
     
     # --- 参数优化 ---
     opt_params = {
@@ -190,8 +190,8 @@ if __name__ == "__main__":
     opt_vars = ['fast', 'slow']
     opt_analyzers = ["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer']
 
-    results_df, output_dir = run_opt(DMAStrategy, opt_params, opt_vars, broker_params, opt_analyzers)
-    best_sharpe_row = plot_heatmap(results_df, "sharpe", output_dir, 'fast', 'slow')
-    best_rtot_row = plot_heatmap(results_df, "rtot", output_dir, 'fast', 'slow')
+    # results_df, output_dir = run_opt(DMAStrategy, opt_params, opt_vars, broker_params, opt_analyzers)
+    # best_sharpe_row = plot_heatmap(results_df, "sharpe", output_dir, 'fast', 'slow')
+    # best_rtot_row = plot_heatmap(results_df, "rtot", output_dir, 'fast', 'slow')
 
     logging.shutdown()

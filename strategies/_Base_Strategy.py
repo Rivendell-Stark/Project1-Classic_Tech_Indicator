@@ -25,6 +25,7 @@ class Strategy_withlog(bt.Strategy):
 
         # --- 创建日志记录器 ---
         self.s_logger = logging.getLogger('StrategyLogger')
+        self.s_logger.setLevel(logging.INFO)
         if self.s_logger.handlers:
             self.s_logger.handlers.clear()
 
