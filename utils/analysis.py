@@ -1,4 +1,6 @@
 import os
+import time
+import random
 import logging
 
 import backtrader as bt
@@ -81,13 +83,18 @@ def generate_analysis(strat, analyzers_list: list[str]):
 
     return (metrics, ret_series)
 
-def generate_quantstats_report(ret_series, output_dir, strategy_name):
+def generate_quantstats_report(ret_series, output_dir, strategy_name, suffix: bool=False):
     """使用 QuantStats 生成 HTML 报告。"""
 
     if ret_series is None or ret_series.empty:
         return None
     
-    report_path = os.path.join(output_dir, "quantstats_report.html")
+    if suffix:
+        time_stamp = time.time_ns()
+        rand = random.randint(0, 9)
+        report_path = os.path.join(output_dir, f"QTreport_{time_stamp}_{rand}.html")
+    else:
+        report_path = os.path.join(output_dir, f"QTreport.html")
 
     qt.reports.html(
         returns=ret_series,

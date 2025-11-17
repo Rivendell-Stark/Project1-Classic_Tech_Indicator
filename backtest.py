@@ -14,12 +14,12 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, global_options: d
     
     # --- A.1 初始化输出和日志 ---
     output_dir, logger = setup_logger(global_options["strategy_name"], global_options["start_date"], global_options["end_date"])
-    print_and_log(f"回测开始: {global_options["strategy_name"]}", logger=logger)
+    print_and_log(f"回测开始: {global_options["strategy_name"]}")
     print(f"回测结果保存路径: {output_dir}")
 
     # --- A.2 配置策略参数 ---
     params_log = ",".join([f"{k}={v}" for k,v in strategy_params.items()])
-    print_and_log(f"回测策略参数: {params_log}", logger=logger)
+    print_and_log(f"回测策略参数: {params_log}")
 
     strategy_params['log_dir'] = output_dir
 
@@ -27,7 +27,7 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, global_options: d
     stock_data_dict = load_stock_data(global_options["data_pool"], global_options["start_date"], global_options["end_date"])
 
     if not stock_data_dict:
-        print_and_log(f"加载股票代码 {global_options["data_pool"]} 在 {global_options["start_date"]} ~ {global_options["end_date"]} 期间的数据失败, 回测结束", logger=logger, level=logging.ERROR)
+        print_and_log(f"加载股票代码 {global_options["data_pool"]} 在 {global_options["start_date"]} ~ {global_options["end_date"]} 期间的数据失败, 回测结束", level=logging.ERROR)
         return
     
     # --- C. 配置 Cerebro ---
@@ -55,13 +55,13 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, global_options: d
     cerebro.addwriter(bt.WriterFile, csv=True, out=trades_path)
 
     # --- D. 运行回测 ---
-    print_and_log("初始价值: %.2f" % cerebro.broker.getvalue(), logger=logger)
+    print_and_log("初始价值: %.2f" % cerebro.broker.getvalue())
     results = cerebro.run()
-    print_and_log('最终价值: %.2f' % cerebro.broker.getvalue(), logger=logger)
+    print_and_log('最终价值: %.2f' % cerebro.broker.getvalue())
 
     # --- E. 回测结果分析 ---
     if not results:
-        print_and_log("策略运行失败，无返回结果，回测结束", logger=logger)
+        print_and_log("策略运行失败，无返回结果，回测结束")
         return
     
     strat = results[0]
@@ -69,35 +69,35 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, global_options: d
     report_path = generate_quantstats_report(ret_series, output_dir, global_options["strategy_name"])
 
     if report_path:
-        print_and_log(f"QuantStats HTML 报告已生成, 路径为： {report_path}", logger=logger)
+        print_and_log(f"QuantStats HTML 报告已生成, 路径为： {report_path}")
     else:
-        print_and_log("QuantStats HTML 报告生成失败。", logger=logger, level=logging.ERROR)
+        print_and_log("QuantStats HTML 报告生成失败。", level=logging.ERROR)
 
     # --- F. 控制台输出指标 ---
     metrics_formatted = format_float_output(metrics)
-    print_and_log(f"总回报率 (rtot): { metrics_formatted.get('rtot')}", logger=logger)
-    print_and_log(f"年化回报率 (rnorm): { metrics_formatted.get('rnorm')}", logger=logger)
-    print_and_log(f"最大回撤 (MaxDD): { metrics_formatted.get('max_dd')}%, 回撤长度为:{ metrics_formatted.get('max_len')}", logger=logger)
-    print_and_log(f"夏普比率 (Sharpe): { metrics_formatted.get('sharpe')}", logger=logger)
-    print_and_log(f"总交易数 (total): { metrics_formatted.get('total')}", logger=logger)
-    print_and_log(f"胜率 (winrate): { metrics_formatted.get('winrate')}", logger=logger)
+    print_and_log(f"总回报率 (rtot): { metrics_formatted.get('rtot')}")
+    print_and_log(f"年化回报率 (rnorm): { metrics_formatted.get('rnorm')}")
+    print_and_log(f"最大回撤 (MaxDD): { metrics_formatted.get('max_dd')}%, 回撤长度为:{ metrics_formatted.get('max_len')}")
+    print_and_log(f"夏普比率 (Sharpe): { metrics_formatted.get('sharpe')}")
+    print_and_log(f"总交易数 (total): { metrics_formatted.get('total')}")
+    print_and_log(f"胜率 (winrate): { metrics_formatted.get('winrate')}")
     print("--------------------------------------")
 
     logging.shutdown()
     cerebro.plot()
     return
 
-def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, global_options: dict, opt_analyzers: list):
+def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, global_options: dict, opt_analyzers: list, gen_report: bool = False):
     # --- A. 初始化输出和日志 ---
     output_dir, logger = setup_logger_opt(global_options["strategy_name"], global_options["start_date"], global_options["end_date"])
-    print_and_log(f"参数优化开始: {global_options["strategy_name"]}", logger=logger)
+    print_and_log(f"参数优化开始: {global_options["strategy_name"]}")
     print(f"优化结果保存路径: {output_dir}")
 
     # --- B. 预加载数据 ---
     stock_data_dict = load_stock_data(global_options["data_pool"], global_options["start_date"], global_options["end_date"])
 
     if not stock_data_dict:
-        print_and_log(f"加载股票代码 {global_options["data_pool"]} 在 {global_options["start_date"]} ~ {global_options["end_date"]} 期间的数据失败, 优化结束", logger=logger, level=logging.ERROR)
+        print_and_log(f"加载股票代码 {global_options["data_pool"]} 在 {global_options["start_date"]} ~ {global_options["end_date"]} 期间的数据失败, 优化结束", level=logging.ERROR)
         return None, output_dir
     
     # --- C. 生成参数组合 ---
@@ -106,7 +106,7 @@ def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, global_opti
         opt_dict[optvar] = opt_params[optvar]
     constraints = opt_params.get("constraints")
     if not constraints:
-        print_and_log(f"注意：优化参数组合没有约束条件", logger=logger, level=logging.WARNING)
+        print_and_log(f"注意：优化参数组合没有约束条件", level=logging.WARNING)
 
     possible_combos = opt_param_combination(opt_dict, constraints)
     remains_params = {k: v for k, v in opt_params.items() if k not in opt_vars and k != "constraints"}
@@ -114,7 +114,7 @@ def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, global_opti
     # --- D. 遍历参数进行回测 ---
     all_results = []
     for combo in possible_combos:
-        print_and_log(f"正在回测参数组合：{", ".join([f"{k}={v}" for k,v in combo.items()])}", logger=logger)
+        print_and_log(f"正在回测参数组合：{", ".join([f"{k}={v}" for k,v in combo.items()])}")
 
         # --- a. 配置 Cerebro ---
         cerebro = bt.Cerebro()
@@ -139,19 +139,24 @@ def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, global_opti
 
         # --- f. 回测结果分析 ---
         if not results:
-            print_and_log("本次回测运行失败，无结果", logger=logger, level=logging.ERROR)
+            print_and_log("本次回测运行失败，无结果", level=logging.ERROR)
             continue
             
         strat = results[0]
-        metrics, _ = generate_analysis(strat, analyzers_list)
+        metrics, ret_series = generate_analysis(strat, analyzers_list)
+        if gen_report:
+            generate_quantstats_report(ret_series, output_dir, global_options["strategy_name"], suffix=True)
         bt_result = metrics | combo
         bt_result['combo'] = combo
         all_results.append(bt_result)
     
     # --- E. 格式化输出所有结果 ---
-    print_and_log(f"优化完成", logger=logger)
+    print_and_log("优化已完成")
+    if gen_report:
+        print_and_log(f"回测报告存放位置为: {output_dir}")
+    df_results = pd.DataFrame(all_results)
     logging.shutdown()
-    return pd.DataFrame(all_results), output_dir
+    return df_results, output_dir
 
 
 if __name__ == "__main__":

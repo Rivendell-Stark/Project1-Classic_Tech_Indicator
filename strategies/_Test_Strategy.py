@@ -14,7 +14,7 @@ class TestStrategy(bt.Strategy):
             if data.datetime[0] > 0:
                 print(f'{dt} | {data._name} - Close: {data.close[0]:.2f}')
 
-class BuyonceStrategy(Strategy_withlog):
+class BuyOnceStrategy(Strategy_withlog):
     """
     最简单的买入并持有策略，用作基准 (Benchmark)。
     它在第一根K线买入, 一直持有到最后一天卖出。

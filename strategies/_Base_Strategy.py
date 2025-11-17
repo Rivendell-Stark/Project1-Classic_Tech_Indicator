@@ -19,6 +19,7 @@ class Strategy_withlog(bt.Strategy):
         self.order = None
         self.bar_executed = len(self)
 
+
         # --- 判断是否为优化模式
         if self.p.is_opt:
             return
@@ -93,4 +94,13 @@ class Strategy_withlog(bt.Strategy):
         self.log(f'交易关闭 - 记录盈亏: 毛利润 {trade.pnl:.2f}, 净利润 {trade.pnlcomm:.2f}')
         
     def stop(self):
-        self.log(f"{self.data._name} 策略记录完毕。")
+
+        # 记录回测结束的日期，取数据源的当前时间
+        current_date = bt.num2date(self.datas[0].datetime[0]).strftime('%Y-%m-%d')
+        final_value = self.broker.getvalue()
+
+        self.log(f'回测结束日期 {current_date}，执行最终清仓操作。当前持仓量: {self.position.size}, 资产总价值: {final_value}', 
+                    level=logging.INFO)
+        
+        # 2. 发出清仓指令 (对当前数据源)
+        self.close()

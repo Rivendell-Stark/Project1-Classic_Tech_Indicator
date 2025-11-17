@@ -13,7 +13,7 @@ def plot_heatmap(df_results: pd.DataFrame,
                  ):
     """根据参数结果绘制热力图"""
 
-    pivot_table = df_results.pivot(index=x, columns=y, values=metric_name)
+    pivot_table = df_results.pivot(index=y, columns=x, values=metric_name)
     plt.figure(figsize=(32, 18))
 
     sns.heatmap(

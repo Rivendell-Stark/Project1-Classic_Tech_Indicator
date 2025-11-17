@@ -3,6 +3,7 @@ import time
 import logging
 from typing import Tuple, Optional, Iterable
 from itertools import product
+import pandas as pd
 
 def make_filename(file_dir: str, *args: str, file_type: Optional[str] = None) -> str:
     """
@@ -14,7 +15,8 @@ def make_filename(file_dir: str, *args: str, file_type: Optional[str] = None) ->
     file_name = file_name + f'.{file_type}' if file_type else file_name
     return os.path.join(file_dir, file_name)
 
-def print_and_log(txt: str, logger: logging.Logger, level=logging.INFO):
+def print_and_log(txt: str, level=logging.INFO):
+    logger = logging.getLogger("BacktestLogger")
     match level:
         case logging.INFO:
             logger.info(txt)
@@ -47,6 +49,16 @@ def opt_param_combination(opt_dict: Iterable, constraints: list[str] = None) -> 
 
     return filtered
 
+def opt_output_result(results_df: pd.DataFrame, output_dir: str, filetype: str= "csv"):
+    filepath = ".".join([os.path.join(output_dir, "opt_results"), filetype])
+    
+    match filetype:
+        case 'csv':
+            results_df.to_csv(filepath)
+        case "excel":
+            results_df.to_excel(filepath)
+    
+    print(f"结果已保存到：{filepath}")
 
 def setup_logger(
         strategy_name: str, 
@@ -93,7 +105,7 @@ def setup_logger_opt(
     os.makedirs(output_dir, exist_ok=True)
 
     # 建立logger对象，并配置handler
-    opt_logger = logging.getLogger('OptimizationLogger')
+    opt_logger = logging.getLogger('BacktestLogger')
     opt_logger.setLevel(logging.INFO)
     if opt_logger.handlers:
         opt_logger.handlers.clear()
