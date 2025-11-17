@@ -1,6 +1,3 @@
-'''
-回测框架主文件
-'''
 import os
 import logging
 import pandas as pd
@@ -9,15 +6,15 @@ import backtrader as bt
 import backtrader.feeds as btfeeds
 
 from data import load_stock_data
-from strategies import DMAStrategy, BuyonceStrategy
+from strategies import DMAStrategy
 from utils import *
 
 
-def run_backtest(strategy: bt.Strategy, strategy_params: dict, broker_params: dict, bt_analyzers:list):
+def run_backtest(strategy: bt.Strategy, strategy_params: dict, global_options: dict, bt_analyzers:list):
     
     # --- A.1 初始化输出和日志 ---
-    output_dir, logger = setup_logger(STRATEGY_NAME, START_DATE, END_DATE)
-    print_and_log(f"回测开始: {STRATEGY_NAME}", logger=logger)
+    output_dir, logger = setup_logger(global_options["strategy_name"], global_options["start_date"], global_options["end_date"])
+    print_and_log(f"回测开始: {global_options["strategy_name"]}", logger=logger)
     print(f"回测结果保存路径: {output_dir}")
 
     # --- A.2 配置策略参数 ---
@@ -27,18 +24,18 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, broker_params: di
     strategy_params['log_dir'] = output_dir
 
     # --- B. 加载数据 ---
-    stock_data_dict = load_stock_data(DATA_POOL, START_DATE, END_DATE)
+    stock_data_dict = load_stock_data(global_options["data_pool"], global_options["start_date"], global_options["end_date"])
 
     if not stock_data_dict:
-        print_and_log(f"加载股票代码 {DATA_POOL} 在 {START_DATE} ~ {END_DATE} 期间的数据失败, 回测结束", logger=logger, level=logging.ERROR)
+        print_and_log(f"加载股票代码 {global_options["data_pool"]} 在 {global_options["start_date"]} ~ {global_options["end_date"]} 期间的数据失败, 回测结束", logger=logger, level=logging.ERROR)
         return
     
     # --- C. 配置 Cerebro ---
     cerebro = bt.Cerebro()
 
     # --- C.1 初始资金与费用设置 ---
-    cerebro.broker.setcash(broker_params['cash'])
-    cerebro.broker.setcommission(commission=broker_params['commission'])
+    cerebro.broker.setcash(global_options['cash'])
+    cerebro.broker.setcommission(commission=global_options['commission'])
     # cerebro.addsizer(bt.sizers.FixedSize, stake=1)
 
     # --- C.2 添加数据源 ---
@@ -69,7 +66,7 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, broker_params: di
     
     strat = results[0]
     metrics, ret_series = generate_analysis(strat, analyzers_list)
-    report_path = generate_quantstats_report(ret_series, output_dir, STRATEGY_NAME)
+    report_path = generate_quantstats_report(ret_series, output_dir, global_options["strategy_name"])
 
     if report_path:
         print_and_log(f"QuantStats HTML 报告已生成, 路径为： {report_path}", logger=logger)
@@ -78,29 +75,29 @@ def run_backtest(strategy: bt.Strategy, strategy_params: dict, broker_params: di
 
     # --- F. 控制台输出指标 ---
     metrics_formatted = format_float_output(metrics)
-    print_and_log(f"总回报率 (rtot): { metrics_formatted['rtot']}", logger=logger)
-    print_and_log(f"年化回报率 (rnorm): { metrics_formatted['rnorm']}", logger=logger)
-    print_and_log(f"最大回撤 (MaxDD): { metrics_formatted['max_dd']}%, 回撤长度为:{ metrics_formatted['max_len']}", logger=logger)
-    print_and_log(f"夏普比率 (Sharpe): { metrics_formatted['sharpe']}", logger=logger)
-    print_and_log(f"总交易数 (total): { metrics_formatted['total']}", logger=logger)
-    print_and_log(f"胜率 (winrate): { metrics_formatted['winrate']}", logger=logger)
+    print_and_log(f"总回报率 (rtot): { metrics_formatted.get('rtot')}", logger=logger)
+    print_and_log(f"年化回报率 (rnorm): { metrics_formatted.get('rnorm')}", logger=logger)
+    print_and_log(f"最大回撤 (MaxDD): { metrics_formatted.get('max_dd')}%, 回撤长度为:{ metrics_formatted.get('max_len')}", logger=logger)
+    print_and_log(f"夏普比率 (Sharpe): { metrics_formatted.get('sharpe')}", logger=logger)
+    print_and_log(f"总交易数 (total): { metrics_formatted.get('total')}", logger=logger)
+    print_and_log(f"胜率 (winrate): { metrics_formatted.get('winrate')}", logger=logger)
     print("--------------------------------------")
 
     logging.shutdown()
     cerebro.plot()
     return
 
-def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, broker_params: dict, opt_analyzers: list):
+def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, global_options: dict, opt_analyzers: list):
     # --- A. 初始化输出和日志 ---
-    output_dir, logger = setup_logger_opt(STRATEGY_NAME, START_DATE, END_DATE)
-    print_and_log(f"参数优化开始: {STRATEGY_NAME}", logger=logger)
+    output_dir, logger = setup_logger_opt(global_options["strategy_name"], global_options["start_date"], global_options["end_date"])
+    print_and_log(f"参数优化开始: {global_options["strategy_name"]}", logger=logger)
     print(f"优化结果保存路径: {output_dir}")
 
     # --- B. 预加载数据 ---
-    stock_data_dict = load_stock_data(DATA_POOL, START_DATE, END_DATE)
+    stock_data_dict = load_stock_data(global_options["data_pool"], global_options["start_date"], global_options["end_date"])
 
     if not stock_data_dict:
-        print_and_log(f"加载股票代码 {DATA_POOL} 在 {START_DATE} ~ {END_DATE} 期间的数据失败, 优化结束", logger=logger, level=logging.ERROR)
+        print_and_log(f"加载股票代码 {global_options["data_pool"]} 在 {global_options["start_date"]} ~ {global_options["end_date"]} 期间的数据失败, 优化结束", logger=logger, level=logging.ERROR)
         return None, output_dir
     
     # --- C. 生成参数组合 ---
@@ -121,8 +118,8 @@ def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, broker_para
 
         # --- a. 配置 Cerebro ---
         cerebro = bt.Cerebro()
-        cerebro.broker.setcash(broker_params["cash"])
-        cerebro.broker.setcommission(commission=broker_params["commission"])
+        cerebro.broker.setcash(global_options["cash"])
+        cerebro.broker.setcommission(commission=global_options["commission"])
         # cerebro.addsizer(bt.sizers.FixedSize, stake=1)
 
         # --- b. 添加数据源 ---
@@ -153,17 +150,17 @@ def run_opt(strategy: bt.Strategy ,opt_params: dict, opt_vars: list, broker_para
     
     # --- E. 格式化输出所有结果 ---
     print_and_log(f"优化完成", logger=logger)
+    logging.shutdown()
     return pd.DataFrame(all_results), output_dir
 
 
 if __name__ == "__main__":
 
-    STRATEGY_NAME = 'DMAStrategy'
-    DATA_POOL = ['600519']
-    START_DATE = '2016-01-01'
-    END_DATE = '2025-12-31'  
-    
-    broker_params = {
+    global_options = {
+        "strategy_name": 'DMAStrategy',
+        "data_pool": ['600519'],
+        "start_date": "2016-01-01",
+        "end_date": "2025-12-31",
         'commission': 0.001,
         "cash": 1000000.0 
     }
@@ -177,7 +174,7 @@ if __name__ == "__main__":
     }
     bt_analyzers = ["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer', 'PyFolio']
 
-    run_backtest(DMAStrategy, strategy_params, broker_params, bt_analyzers)
+    run_backtest(DMAStrategy, strategy_params, global_options, bt_analyzers)
     
     # --- 参数优化 ---
     opt_params = {
@@ -190,8 +187,8 @@ if __name__ == "__main__":
     opt_vars = ['fast', 'slow']
     opt_analyzers = ["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer']
 
-    # results_df, output_dir = run_opt(DMAStrategy, opt_params, opt_vars, broker_params, opt_analyzers)
+    # results_df, output_dir = run_opt(DMAStrategy, opt_params, opt_vars, global_options, opt_analyzers)
     # best_sharpe_row = plot_heatmap(results_df, "sharpe", output_dir, 'fast', 'slow')
     # best_rtot_row = plot_heatmap(results_df, "rtot", output_dir, 'fast', 'slow')
 
-    logging.shutdown()
+    

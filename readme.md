@@ -1,14 +1,29 @@
+借助Backtrader实现的一个回测框架。
+
+data/ : 数据处理部分
+
+strategies/ : 策略实现部分
+
+utils/ : 功能性函数
+
+backtest.py: 回测函数与参数优化函数
+
+run_script.py: 保存策略的参数设置和回测函数
+
+
+
+-----------------------------
+
 python version: 3.13.9
 
-libraries: numpy pandas scipy matplotlib seaborn scikit-learn jupyter tqdm joblib backtrader akshare psycopg2 statsmodels pytz dateutil
-
+libraries: numpy、pandas 、matplotlib 、seaborn 、backtrader 、quantstats 、pyfolio 、sqlalchemy 、psycopg2
 
 
 数据库表结构： 
 
 tablename: 'daily_price'
 
-|     栏位      |     类型      | 校对规则 |  可空的  | 预设 |   存储   | 压缩 | 统计目标 | 描述 |
+|     栏位      |     类型      | 校对规则  |  可空的  | 预设  |   存储   | 压缩 | 统计目标  | 描述   |
 | ------------ | ------------- | -------- | -------- | ---- | -------- | ---- | -------- | ------ |
 | code         | character(6)  |          | not null |      | extended |      |          |        |
 | date         | date          |          | not null |      | plain    |      |          |        |
