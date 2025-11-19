@@ -92,6 +92,7 @@ class Strategy_withlog(bt.Strategy):
         if not trade.isclosed:
             return
         self.log(f'交易关闭 - 记录盈亏: 毛利润 {trade.pnl:.2f}, 净利润 {trade.pnlcomm:.2f}')
+        self.log("---------------------------------------------------------")
         
     def stop(self):
 

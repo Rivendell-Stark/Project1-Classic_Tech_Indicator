@@ -99,7 +99,7 @@ def opt_RSI_Reversal():
 
 def bt_RSI_Trend():
     global_options = {
-    "strategy_name": 'RSI_Reversal_Strategy',
+    "strategy_name": 'RSI_Trend_Strategy',
     "data_pool": ['600519'],
     "start_date": "2016-01-01",
     "end_date": "2025-12-31",
@@ -107,9 +107,9 @@ def bt_RSI_Trend():
     "cash": 1000000.0 
     }
     strategy_params = {
-        "period": 14,
-        "low_level": 60,
-        "high_level": 70,
+        "period": 19,
+        "low_level": 45,
+        "high_level": 60,
         "lma_period": 100,
         "atr_period": 14,
         "atr_multiplier": 2.0,
@@ -120,7 +120,7 @@ def bt_RSI_Trend():
 
 def opt_RSI_Trend():
     global_options = {
-    "strategy_name": 'RSI_Reversal_Strategy',
+    "strategy_name": 'RSI_Trend_Strategy',
     "data_pool": ['600519'],
     "start_date": "2016-01-01",
     "end_date": "2025-12-31",
@@ -128,22 +128,43 @@ def opt_RSI_Trend():
     "cash": 1000000.0 
     }
     opt_params = {
-        "period": 14,
-        "low_level": range(30,61,5),
-        "high_level": range(50,81,5),
+        "period": range(7,21,2),
+        "low_level": range(40,61,5),
+        "high_level": range(55,76,5),
+        "lma_period": 100,
+        "atr_period": 14,
+        "atr_multiplier": [1.5, 2.0, 2.5, 3.0],
+        'target_pos': 0.95,
+        "constraints": ['low_level <= high_level']
+    }
+    opt_vars = ["low_level", "high_level", "period", "atr_multiplier"]
+    opt_analyzers = ["Returns", "DrawDown", "SharpeRatio"]
+
+    results_df, output_dir = run_opt(RSI_Trend_Strategy, opt_params, opt_vars, global_options, opt_analyzers)
+    opt_output_result(results_df, output_dir)
+    # plot_heatmap(results_df, "rtot", output_dir, "low_level", "high_level")
+
+def bt_Bollinger():
+    global_options = {
+    "strategy_name": 'Bollinger_Strategy',
+    "data_pool": ['600519'],
+    "start_date": "2016-01-01",
+    "end_date": "2025-12-31",
+    'commission': 0.001,
+    "cash": 1000000.0 
+    }
+    strategy_params = {
+        "period": 19,
+        "devfactor": 2.0,
         "lma_period": 100,
         "atr_period": 14,
         "atr_multiplier": 2.0,
         'target_pos': 0.95,
-        "constraints": ['low_level <= high_level']
     }
-    opt_vars = ["low_level", "high_level"]
-    opt_analyzers = ["Returns", "DrawDown", "SharpeRatio"]
+    bt_analyzers = ["Returns", "DrawDown", "SharpeRatio", 'TradeAnalyzer', 'PyFolio']
+    run_backtest(Bollinger_Strategy, strategy_params, global_options, bt_analyzers)
 
-    results_df, output_dir = run_opt(RSI_Reversal_Strategy, opt_params, opt_vars, global_options, opt_analyzers)
-    opt_output_result(results_df, output_dir)
-    plot_heatmap(results_df, "rtot", output_dir, "low_level", "high_level")
+
 
 if __name__ == "__main__":
-
-    bt_RSI_Trend()
+    bt_Bollinger()

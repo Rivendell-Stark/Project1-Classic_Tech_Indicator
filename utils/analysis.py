@@ -2,6 +2,7 @@ import os
 import time
 import random
 import logging
+import math
 
 import backtrader as bt
 import backtrader.analyzers as btanal
@@ -34,14 +35,17 @@ def configure_analyzers(cerebro: bt.cerebro, analyzers_list: list) -> None:
             cerebro.addanalyzer(AnalyzerClass, _name = name.lower())
     return 
 
+def configure_analyzers_mannual(cerebro: bt.cerebro, analyzers_list: list, params: dict) -> None:
+    pass
+
 def generate_analysis(strat, analyzers_list: list[str]):
     metrics = {}
 
     if "Returns" in analyzers_list:
         try:
             returns_ana = strat.analyzers.returns.get_analysis()
-            metrics["rtot"] = returns_ana['rtot']
-            metrics['rnorm'] = returns_ana['rnorm']
+            metrics["rtot"] = math.exp(returns_ana['rtot']) - 1 
+            metrics['rnorm'] = math.exp(returns_ana['rnorm']) - 1
         except Exception as e:
             metrics['rtot'] = "N/A"
             metrics['rnorm'] = 'N/A'

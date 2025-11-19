@@ -24,6 +24,10 @@ B. 趋势确认（顺势）策略
 买入信号：股票处于明确的上升趋势中，当 RSI 回落至 40~50 区间时，视为买入（回调结束）信号。
 卖出信号：股票处于明确的下降趋势中，当 RSI 反弹至 50~60 区间时，视为卖出（反弹结束）信号。
 
+优化:
+RSI过滤：当rsi超过10日均线时，即确认上涨趋势，再买入。
+
+
 '''
 import backtrader.indicators as btind
 from ._Base_Strategy import Strategy_withlog
@@ -53,6 +57,15 @@ class RSI_Reversal_Strategy(Strategy_withlog):
         self.atr = btind.AverageTrueRange(self.datas[0], period=self.p.atr_period)
         
         self.stopprice = 0.0
+
+    def notify_order(self, order):
+
+        super().notify_order(order)
+
+        if order.status == order.Completed and order.isbuy():
+            current_atr = self.atr[0]
+            self.stopprice = self.buyprice - (self.p.atr_multiplier * current_atr)
+            self.log(f"ATR 止损价设置为: {self.stopprice:,.2f} (买入价 {self.buyprice:,.2f} - {self.p.atr_multiplier} x ATR {current_atr:,.2f})")
 
     # --- B.2 策略周期执行 ---
     def next(self):
@@ -86,6 +99,8 @@ class RSI_Trend_Strategy(Strategy_withlog):
         ("high_level", 60), # 动量确认买入阈值
         ("low_level", 50),  # 动量衰竭卖出阈值
         ("lma_period", 200), # 长期趋势过滤周期
+        ("sma_period", 20),
+        ("rsima_period",10),
         ('target_pos', 0.95),
         ("atr_period", 14),
         ("atr_multiplier", 2.0),
@@ -97,9 +112,13 @@ class RSI_Trend_Strategy(Strategy_withlog):
         super().__init__()
         self.dataclose = self.datas[0].close
         self.rsi = btind.RelativeStrengthIndex(self.datas[0], period=self.p.period)
-        self.lma = btind.MovingAverageSimple(self.datas[0].close, period=self.p.lma_period)
-        self.atr = btind.AverageTrueRange(self.datas[0], period=self.p.atr_period)
+        self.lma = btind.MovingAverageSimple(self.dataclose, period=self.p.lma_period)
+        self.sma = btind.MovingAverageSimple(self.dataclose, period=self.p.sma_period)
+        self.rsi_ma = btind.MovingAverageSimple(self.rsi, period=self.p.rsima_period)
+
         
+        
+        self.atr = btind.AverageTrueRange(self.datas[0], period=self.p.atr_period)
         self.stopprice = 0.0
 
     def notify_order(self, order):
@@ -109,18 +128,24 @@ class RSI_Trend_Strategy(Strategy_withlog):
         if order.status == order.Completed and order.isbuy():
             current_atr = self.atr[0]
             self.stopprice = self.buyprice - (self.p.atr_multiplier * current_atr)
-            self.log(f"买入订单执行，ATR 止损价设置为: {self.stopprice:,.2f} (买入价 {self.buyprice:,.2f} - {self.p.atr_multiplier} x ATR {current_atr:,.2f})")
+            self.log(f"ATR 止损价设置为: {self.stopprice:,.2f} (买入价 {self.buyprice:,.2f} - {self.p.atr_multiplier} x ATR {current_atr:,.2f})")
 
 
     # --- B.2 策略周期执行 ---
     def next(self):
-        buy_sig = self.rsi[0] > self.p.high_level and self.rsi[-1] <= self.p.high_level
-        sell_sig = self.rsi[0] < self.p.low_level and self.rsi[-1] >= self.p.low_level
-        ltrend_sig = self.dataclose[0] > self.lma[0]
-        risk_sig = self.datas[0].low[0] <= self.stopprice
-
         if self.order:
             return
+        
+        buy_sig = self.rsi[0] > self.p.high_level and self.rsi[-1] <= self.p.high_level and self.rsi[0] > self.rsi_ma[0]
+        sell_sig = self.rsi[0] < self.p.low_level and self.rsi[-1] >= self.p.low_level  and self.rsi[0] < self.rsi_ma[0]
+        ltrend_sig = self.dataclose[0] > self.lma[0]
+        strend_sig = self.dataclose[0] < self.sma[0]
+        risk_sig = self.datas[0].low[0] <= self.stopprice
+
+        if self.dataclose[0] == self.datas[0].high[-1]:
+            new_stopprice = self.dataclose[0] - (self.atr[0] * self.p.atr_multiplier)
+            self.stopprice = max(new_stopprice, self.stopprice)
+            self.log(f"由于趋势上涨，止损价更新为{self.stopprice}")
 
         if not self.position:
             if buy_sig and ltrend_sig:
